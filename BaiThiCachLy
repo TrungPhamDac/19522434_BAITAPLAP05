@@ -1,0 +1,114 @@
+Câu 1.
+---View---
+ViewData["Title"] = "Thêm điểm cách ly"
+<form action = "InsertDiemCachLy" method = "post">
+	<input type = "text" name = "MaDiemCachLy" id = "MaDiemCachLy"/><br>
+	<input type = "text" name = "TenDiemCachLy" id = "TenDiemCachLy"/><br>
+	<input type = "submit" name = "submit" value = "Them"/>
+</form>
+---Model---
+public class DiemCachLy
+{
+	public string MaDiemCachLy;
+	public string TenDiemCachLy;
+	public string DiaChi;
+}
+---DataContext---
+public int ThemDiemCachLy(DiemCachLy dcl)
+{
+	var str = "Insert into DiemCachLy values (@MaDiemCachLy, @TenDiemCachLy, @DiaChi);
+	MySqlCommand cmd = new MySqlCommand(str, con);
+	cmd.Parameters.AddWithValue("MaDiemCachLy", dcl.MaDiemCachLy);
+	cmd.Parameters.AddWithValue("TenDiemCachLy", dcl.TenDiemCachLy);
+	cmd.Parameters.AddWithValue("DiaChi", dcl.DiaChi);
+	return cmd.ExecuteNonQuery();
+}
+---Controller---
+public IActionResult ThemDiemCachLy(DiemCachLy dcl)
+{
+	DataContext dc = new DataContext();
+	dc.ThemDiemCachLy(dcl);
+	return View();
+}
+
+Câu 2.
+---Model---
+public class CongNhan
+{
+	public string TenCN;
+	public int NamSinh;
+	public string NuocVe;
+	public int SoTC;
+}
+
+---View---
+<form action = "DanhSachCongNhan" method = "post">
+	<input type = "text" name = "SoTC"/><br>
+	<input type = "submit" value= "liet ke" name = "submit" id = "them"/>
+</form>
+
+<table border="1">
+	<tr>
+		<th>Ten cong nhan</th>
+		<th>Nam sinh</th>
+		<th>Nuoc ve</th>
+		<th>So trieu chung</th>
+	</tr>
+	@foreach(var item in Model)
+	{	
+		<tr>
+			<td>
+				@item.GetType().GetProperty("TenCN").GetValue(item, null)
+			</td>
+			<td>
+				@item.GetType().GetProperty("NamSinh").GetValue(item, null)
+			</td>	
+			<td>	
+				@item.GetType().GetProperty("NuocVe").GetValue(item, null)
+			</td>	
+			<td>	
+				@item.GetType().GetProperty("SoTC").GetValue(item, null)
+			</td>		
+		</tr>
+	}
+</table>
+
+---DataContext---
+public List<CongNhan> GetCongNhan(int input)
+{
+	List<CongNhan> list = new List<CongNhan>();
+	using(SqlConnection con = GetConnection())
+	{
+		con.Open();
+		var str = @"Select TenCongNhan, NamSinh, NuocVe, count(*) as SoTC
+				from CongNhan cn join CN_TC tc
+				on cn.MaCongNhan = tc.MaCongNhan
+				group by TenCongNhan, NamSinh, NuocVe
+				having count(*) >= @input";
+		SqlCommand cmd = new SqlCommand(str, con);
+		cmd.Parameters.AddWithValues("input", input);
+		using(var reader = cmd.ExecuteReader())
+		{
+			while(reader.Read())
+			{
+				list.Add(new
+				{
+					TenCN = reader["TenCongNhan"].ToString(),
+					NamSinh = Convert.ToInt32(reader["NamSinh"]),
+					NuocVe = reader["NuocVe"].ToString(),
+					SoTC = Convert.ToInt32(reader["SoTrieuChung"])
+				});
+			}
+			reader.Close();
+		}
+		con.Close();
+	}
+	return list;
+}
+
+---Controller---
+public IActionResult DanhSachCongNhan(int input)
+{
+	DataContext context = new DataContext;
+	return View(context.GetCongNhan(input));
+}
